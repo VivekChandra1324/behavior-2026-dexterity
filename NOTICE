@@ -1,0 +1,17 @@
+behavior-2026-dexterity
+Copyright 2026 Vivek Chandra (team Dexterity)
+
+This repository's code is licensed under the Apache License, Version 2.0 (LICENSE).
+
+It builds on, and its openpi/overlay contains modified files from:
+  - openpi (Physical Intelligence; BEHAVIOR fork wensi-ai/openpi), Apache License 2.0.
+    Every modified file carries a notice; the changes are listed in openpi/CHANGES.md.
+  - BEHAVIOR-1K / OmniGibson (Stanford Vision and Learning Lab) and the 2026 BEHAVIOR Challenge dataset,
+    used under their own licenses; nothing from them is redistributed here.
+
+Model weights:
+  The trained checkpoint we released (linked from the README) is fine-tuned from pi0.5, whose vision-language
+  backbone is PaliGemma, a Gemma model. The weights are therefore a Gemma Model Derivative:
+  Gemma is provided under and subject to the Gemma Terms of Use found at ai.google.dev/gemma/terms
+  (a copy is included as LICENSE_GEMMA.txt). Use of the weights must follow the use restrictions in Section 3.2
+  of those terms, including the Gemma Prohibited Use Policy (ai.google.dev/gemma/prohibited_use_policy).
