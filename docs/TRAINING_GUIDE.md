@@ -33,6 +33,7 @@ uv tool install "huggingface_hub[cli,hf_xet]"                # the `hf` command,
 ```bash
 export WORK=/path/to/a/large/disk/b1k        # everything below lives under $WORK
 mkdir -p $WORK/data
+export UV_CACHE_DIR=$WORK/cache/uv           # uv's package cache (~13 GB), otherwise in ~/.cache/uv
 ```
 
 ## 1. Set up the training code
@@ -50,7 +51,9 @@ uv run python -c "import jax; print(jax.devices())"                     # must l
 ```
 
 The π0.5 base weights (`gs://openpi-assets/checkpoints/pi05_base`, public) are downloaded automatically on the first
-training run into `$WORK/cache/openpi` (~12 GB; set by `configs/train.env`).
+training run into `$WORK/cache/openpi` (~12 GB; set by `configs/train.env`). The data loader also builds an Arrow
+cache of the dataset's parquet files (~155 GB, first made by `prepare_assets.sh`, reused by training); `configs/train.env`
+puts it in `$WORK/cache/huggingface` (`HF_HOME`) so it does not fill your home directory.
 
 ## 2. Download the dataset
 

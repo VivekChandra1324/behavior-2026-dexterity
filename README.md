@@ -43,7 +43,7 @@ Related: [challenge website](https://behavior.stanford.edu/challenge/index.html)
 |---|---|
 | GPUs | **at least 2× 80 GB** (tested on 2× H100 with our full configuration); we trained on 8× H100. One 80 GB GPU works only with the EMA copy turned off. Details: [guide §5](docs/TRAINING_GUIDE.md#5-size-the-run-for-your-gpus) |
 | RAM | ~192 GB per machine (the 2-GPU test peaked at 147 GB) |
-| Disk | ~2 TB: dataset 1.2 TB + 224 copy 0.57 TB + ~25 GB per checkpoint (the 1.1 TB of original videos can be deleted after step 3) |
+| Disk | ~2 TB: dataset 1.2 TB + 224 copy 0.57 TB + ~190 GB of caches in `$WORK/cache` + ~25 GB per checkpoint (the 1.1 TB of original videos can be deleted after step 3). Nothing large is written to `$HOME` |
 | Software | Linux, NVIDIA driver for CUDA 12, git, ffmpeg with libx265, Python ≥ 3.9, [uv](https://docs.astral.sh/uv/), the `hf` CLI |
 | Accounts | none — the dataset, base weights and this repository are public |
 
@@ -54,6 +54,7 @@ Related: [challenge website](https://behavior.stanford.edu/challenge/index.html)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 uv tool install "huggingface_hub[cli,hf_xet]"                  # plus git and ffmpeg (with libx265) from your OS
 export WORK=/path/to/a/large/disk/b1k && mkdir -p $WORK/data    # everything lives under $WORK
+export UV_CACHE_DIR=$WORK/cache/uv                              # keeps uv's ~13 GB package cache off $HOME
 
 # 1. code: openpi (BEHAVIOR fork) at the pinned commit + our changes
 cd $WORK && git clone https://github.com/VivekChandra1324/behavior-2026-dexterity.git && cd behavior-2026-dexterity
