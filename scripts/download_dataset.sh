@@ -1,12 +1,12 @@
 #!/bin/bash
 # Download the official 2026 BEHAVIOR Challenge demonstrations (LeRobot v3 format) from Hugging Face.
 #
-#   bash scripts/download_dataset.sh /data/2026-challenge-demos            # RGB + low-dim (what training needs)
-#   INCLUDE_DEPTH=1 bash scripts/download_dataset.sh /data/2026-challenge-demos   # also the depth videos
+#   bash scripts/download_dataset.sh $WORK/data/2026-challenge-demos        # RGB + low-dim (what training needs)
+#   INCLUDE_DEPTH=1 bash scripts/download_dataset.sh $WORK/data/2026-challenge-demos   # also the depth videos
 #
-# Size: ~1 TB without depth, ~3.3 TB with it. Depth is NOT used by this pipeline (and neither baseline reads it).
-# Resumable: re-run the same command to fill any gaps. Needs `pip install "huggingface_hub[cli,hf_xet]"` and, if
-# the dataset requires it, `hf auth login`.
+# Size: ~1.2 TB without depth (RGB videos 1.14 TB + low-dim data 70 GB), ~3.3 TB with it.
+# Depth is NOT used by this pipeline (neither official baseline reads it).
+# Resumable: re-run the same command to fill any gaps. Needs the `hf` CLI: uv tool install "huggingface_hub[cli,hf_xet]".
 set -euo pipefail
 ROOT=${1:?usage: download_dataset.sh <dataset_root>}
 REPO=behavior-1k/2026-challenge-demos

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify the 224 training root before training on it (cheap: reads container headers, decodes nothing).
 
-    python scripts/verify_rgb224.py --src /data/2026-challenge-demos --dst /data/2026-challenge-rgb224
+    python3 scripts/verify_rgb224.py --src $WORK/data/2026-challenge-demos --dst $WORK/data/2026-challenge-rgb224
 
 Checks every RGB video: it exists, has EXACTLY the source's frame count (a short file silently shifts frame indices),
 is 224x224, and has no B-frames (has_b_frames=0 -- otherwise the loader's fast seek is wrong and training crawls).

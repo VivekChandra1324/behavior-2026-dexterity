@@ -2,7 +2,7 @@
 """Compute the pi0.5 normalisation statistics (state + actions) for a B1K training root.
 
     cd <openpi checkout> && uv run python <this repo>/scripts/compute_norm_stats.py \
-        --dataset-root /data/2026-challenge-rgb224 --repo-id behavior-1k/2026-challenge-rgb224 \
+        --dataset-root $WORK/data/2026-challenge-rgb224 --repo-id behavior-1k/2026-challenge-rgb224 \
         --assets-base-dir ./assets --no-video
 
 The fork's own scripts/compute_norm_stats.py only takes a config name (its pi05_b1k config hard-codes a dataset

@@ -13,10 +13,10 @@ OPENPI=$(cd "${1:?usage: train.sh <openpi_dir>}" && pwd)
 source "${TRAIN_ENV:-$HERE/configs/train.env}"
 
 ASSET_DIR=$ASSETS_DIR/pi05_b1k/$B1K_REPO_ID
-[ -f "$ASSET_DIR/norm_stats.json" ] || { echo "missing $ASSET_DIR/norm_stats.json -- run scripts/compute_norm_stats.py first"; exit 1; }
+[ -f "$ASSET_DIR/norm_stats.json" ] || { echo "missing $ASSET_DIR/norm_stats.json -- run scripts/prepare_assets.sh first (README step 4)"; exit 1; }
 if [ "$B1K_STAGE_AUX" = "1" ]; then
   export B1K_STAGE_TABLE=${B1K_STAGE_TABLE:-$ASSET_DIR/stage_table.json}
-  [ -f "$B1K_STAGE_TABLE" ] || { echo "B1K_STAGE_AUX=1 but no $B1K_STAGE_TABLE -- run scripts/compute_stage_table.py"; exit 1; }
+  [ -f "$B1K_STAGE_TABLE" ] || { echo "B1K_STAGE_AUX=1 but no $B1K_STAGE_TABLE -- run scripts/prepare_assets.sh (README step 4)"; exit 1; }
 fi
 NGPU=$(nvidia-smi -L | wc -l)
 (( BATCH_SIZE % NGPU == 0 )) || { echo "BATCH_SIZE $BATCH_SIZE is not divisible by the $NGPU visible GPUs"; exit 1; }

@@ -1,18 +1,39 @@
 # Training π0.5 on BEHAVIOR-1K (2026 challenge) — step-by-step guide
 
-This guide reproduces the training of our submitted checkpoint, and shows how to adapt it to **your** hardware.
-It assumes a Linux machine with NVIDIA GPUs, `git`, `ffmpeg`/`ffprobe` and [`uv`](https://docs.astral.sh/uv/).
+This guide reproduces the training of our submitted checkpoint and shows how to adapt it to **your** hardware.
+Every command is meant to be copied as is; the only thing you choose is a working directory, `$WORK`.
 
-| step | what | time (our hardware) |
-|---|---|---|
-| 1 | Set up the training code | ~15 min |
-| 2 | Download the dataset | hours (≈1 TB) |
-| 3 | Build the 224×224 training dataset | 8–12 h on ~48–96 CPU cores |
-| 4 | Normalisation statistics + stage table | ~1 h 40 min + seconds |
-| 5 | Size the run for your GPUs | — |
-| 6 | Train | ~11 days on 8× H100 for our full run |
+| step | what | time (our hardware) | disk |
+|---|---|---|---|
+| 0 | Prerequisites | ~10 min | — |
+| 1 | Set up the training code | ~15 min | ~10 GB |
+| 2 | Download the dataset | hours (network-bound) | 1.2 TB |
+| 3 | Build the 224×224 training dataset | 8–12 h on ~48–96 CPU cores | 0.57 TB |
+| 4 | Normalisation statistics + stage table | ~1 h 40 min | < 1 MB |
+| 5 | Size the run for your GPUs | — | — |
+| 6 | Train | ~11 days on 8× H100 for our full run | ~25 GB per checkpoint |
 
 ---
+
+## 0. Prerequisites
+
+* **Linux** with **NVIDIA GPUs** and a CUDA 12-capable driver (`nvidia-smi` works). See §5 for how many GPUs.
+* **git**, **ffmpeg/ffprobe with the x265 encoder**, **Python ≥ 3.9** (for the data scripts) and **uv**:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh             # uv (https://docs.astral.sh/uv/)
+sudo apt-get install -y git ffmpeg                          # or: conda install -c conda-forge ffmpeg git
+ffmpeg -hide_banner -encoders | grep libx265                 # must print a line: the encoder used in step 3
+uv tool install "huggingface_hub[cli,hf_xet]"                # the `hf` command, for the dataset download
+```
+
+* No account is needed: the dataset, the π0.5 base weights and this repository are public.
+* Pick a working directory on a large disk (~2 TB free) and keep it exported in every shell you use:
+
+```bash
+export WORK=/path/to/a/large/disk/b1k        # everything below lives under $WORK
+mkdir -p $WORK/data
+```
 
 ## 1. Set up the training code
 
@@ -21,26 +42,26 @@ BEHAVIOR fork [`wensi-ai/openpi`](https://github.com/wensi-ai/openpi), plus our 
 listed in [`openpi/CHANGES.md`](../openpi/CHANGES.md)).
 
 ```bash
+cd $WORK
 git clone https://github.com/VivekChandra1324/behavior-2026-dexterity.git
-cd behavior-2026-dexterity
-bash scripts/setup_openpi.sh ../openpi-b1k          # fork at the pinned commit + our overlay
-cd ../openpi-b1k && GIT_LFS_SKIP_SMUDGE=1 uv sync    # Python 3.11, JAX 0.5.3 (CUDA 12), the lerobot fork, ...
-uv run python -c "import jax; print(jax.devices())" # must list every GPU
+bash behavior-2026-dexterity/scripts/setup_openpi.sh $WORK/openpi-b1k    # fork at the pinned commit + our overlay
+cd $WORK/openpi-b1k && GIT_LFS_SKIP_SMUDGE=1 uv sync                      # Python 3.11, JAX 0.5.3 (CUDA 12), lerobot fork
+uv run python -c "import jax; print(jax.devices())"                     # must list every GPU
 ```
 
-The π0.5 base weights (`gs://openpi-assets/checkpoints/pi05_base`) are downloaded automatically on the first run
-into `$OPENPI_DATA_HOME` (default `~/.cache/openpi`, ~12 GB); point that variable at a large disk if needed.
+The π0.5 base weights (`gs://openpi-assets/checkpoints/pi05_base`, public) are downloaded automatically on the first
+training run into `$WORK/cache/openpi` (~12 GB; set by `configs/train.env`).
 
 ## 2. Download the dataset
 
 The official data is [`behavior-1k/2026-challenge-demos`](https://huggingface.co/datasets/behavior-1k/2026-challenge-demos)
-(LeRobot v3): **20,000 teleoperated episodes, 100 tasks × 200, 30 fps, 211 M frames**. Each frame has three RGB
-cameras (head 720×720, two wrists 480×480), three depth streams, a 61-dim proprioceptive state and a 23-dim
-action (absolute joint targets for base, torso, both arms and grippers).
+(LeRobot v3, MIT license): **20,000 teleoperated episodes, 100 tasks × 200, 30 fps, 211 M frames**. Each frame has
+three RGB cameras (head 720×720, two wrists 480×480), three depth streams, a 61-dim proprioceptive state and a
+23-dim action (absolute joint targets for base, torso, both arms and grippers).
 
 ```bash
-pip install "huggingface_hub[cli,hf_xet]"
-bash scripts/download_dataset.sh /data/2026-challenge-demos          # RGB + low-dim, ~1 TB
+cd $WORK/behavior-2026-dexterity
+bash scripts/download_dataset.sh $WORK/data/2026-challenge-demos     # RGB + low-dim: 1.2 TB, resumable
 ```
 
 **Depth is skipped on purpose:** it is 2.1 of the 3.3 TB and π0.5 does not read it (neither does the other
@@ -49,17 +70,20 @@ official baseline). Add `INCLUDE_DEPTH=1` only if you want to experiment with it
 ## 3. Build the 224×224 training dataset — do not skip this
 
 ```bash
-python scripts/transcode_rgb224.py --src /data/2026-challenge-demos --dst /data/2026-challenge-rgb224 --workers 48
-python scripts/verify_rgb224.py   --src /data/2026-challenge-demos --dst /data/2026-challenge-rgb224
+python3 scripts/transcode_rgb224.py --src $WORK/data/2026-challenge-demos --dst $WORK/data/2026-challenge-rgb224 --workers 48
+python3 scripts/verify_rgb224.py   --src $WORK/data/2026-challenge-demos --dst $WORK/data/2026-challenge-rgb224
 ```
 
-This re-encodes the 3 × 1,762 RGB videos to 224×224 (HEVC, CRF 28, keyframe every 8 frames, **no B-frames**) and
-symlinks the unchanged low-dimensional data. It is resumable — re-run the same command after any interruption —
-and `verify_rgb224.py` must print `0 problems` (identical frame counts, 224×224, no B-frames) before you train.
+This re-encodes the 5,286 RGB videos (3,050 head-camera files + 2 × ~1,118 wrist-camera files) to 224×224 (HEVC,
+CRF 28, keyframe every 8 frames, **no B-frames**): 1.14 TB → 0.57 TB. The unchanged low-dimensional data is
+symlinked, not copied. Use about half your CPU cores as `--workers`. It is resumable — re-run the same command after
+any interruption — and `verify_rgb224.py` must report `0 problems` (identical frame counts, 224×224, no B-frames)
+before you train. Once it does, you may delete `$WORK/data/2026-challenge-demos/videos` to free 1.1 TB (keep
+`data/` and `meta/`: the 224 root links to them).
 
 Why it matters — this was the largest speed-up of the whole project:
-* π0.5 sees 224×224 images anyway (openpi resizes every frame before augmentation), so storing 224 is lossless
-  for the model's input pipeline except for the re-encode itself, and it cuts the bytes read per sample ~10×.
+* π0.5 sees 224×224 images anyway (openpi resizes every frame before augmentation), so storing 224 changes nothing
+  for the model's input pipeline except the re-encode itself, and it cuts the bytes read per sample ~10×.
 * **B-frames make random access ~270× more expensive.** With B-frames the decoder's cheap seek returns wrong
   frames, so the loader must use the exact seek, which scans the file's packet index on every open: 0.82 s per
   open vs 0.003 s without. With three cameras per sample our loader fell to ~37 samples/s while the GPUs needed
@@ -68,24 +92,21 @@ Why it matters — this was the largest speed-up of the whole project:
 ## 4. Normalisation statistics and stage table
 
 ```bash
-cd ../openpi-b1k
-uv run python ../behavior-2026-dexterity/scripts/compute_norm_stats.py \
-    --dataset-root /data/2026-challenge-rgb224 --repo-id behavior-1k/2026-challenge-rgb224 \
-    --assets-base-dir $PWD/assets --no-video
-uv run python ../behavior-2026-dexterity/scripts/compute_stage_table.py --root /data/2026-challenge-rgb224 \
-    --out $PWD/assets/pi05_b1k/behavior-1k/2026-challenge-rgb224/stage_table.json
+bash scripts/prepare_assets.sh $WORK/openpi-b1k     # writes $WORK/assets/pi05_b1k/behavior-1k/2026-challenge-rgb224/
 ```
 
-* `--no-video` computes the statistics without decoding any frame (they only use state and actions). Without it
-  the loader decodes three videos per sample for nothing, and per-worker memory grew without bound. On the full
-  root it took ~1 h 40 min in one process at ~14 GB of RAM. `--max-frames N` gives a quicker approximation.
-* The stage table holds, per task, how many temporal stages to predict (`clip(round(mean length / 900), 5, 15)`)
-  and every episode's length. It needs only the dataset metadata and takes seconds.
-* Both files must be in `<assets>/pi05_b1k/<repo_id>/`; `train.sh` checks for them.
+* `norm_stats.json`: mean/std/quantiles of state and actions over the dataset, computed **without decoding any
+  video** (`--no-video`; they only use state and actions — decoding three videos per sample for nothing made memory
+  grow without bound). Full dataset: ~1 h 40 min in one process at ~14 GB of RAM; `MAX_FRAMES=200000` before the
+  command gives a quicker approximation.
+* `stage_table.json`: per task, how many temporal stages the auxiliary head predicts
+  (`clip(round(mean length / 900), 5, 15)`) and every episode's length; from the metadata, in seconds.
+* `train.sh` refuses to start without them.
 
 ## 5. Size the run for your GPUs
 
-Edit the "your hardware" and "schedule" blocks of [`configs/train.env`](../configs/train.env). Our run:
+Edit the "your hardware" and "schedule" blocks of [`configs/train.env`](../configs/train.env) (or copy it and pass
+`TRAIN_ENV=my.env` to the scripts). Our run:
 
 | | our final run |
 |---|---|
@@ -146,13 +167,16 @@ Watch host RAM and the data-wait fraction (`B1K_LOG_DATAWAIT=1` logs it) when yo
 ## 6. Train
 
 ```bash
-cd behavior-2026-dexterity
-bash scripts/train.sh ../openpi-b1k                     # or: TRAIN_ENV=my.env bash scripts/train.sh ../openpi-b1k
+cd $WORK/behavior-2026-dexterity
+bash scripts/train.sh $WORK/openpi-b1k            # or: TRAIN_ENV=my.env bash scripts/train.sh $WORK/openpi-b1k
 ```
+
+Train in a `tmux`/`screen` session or under your job scheduler: a full run takes days. Extra arguments after the
+openpi directory are passed to openpi's trainer (e.g. `--ema-decay None`).
 
 * **Start-up takes a few minutes** before step 0: building the sampling index over 211 M frames (~3 min),
   loading the 12.5 GB base weights and compiling the training step (~1–2 min with a cold compile cache).
-* Checkpoints go to `<CKPT_DIR>/pi05_b1k/<EXP_NAME>/<step>/` every `SAVE_INTERVAL` steps.
+* Checkpoints go to `$WORK/checkpoints/pi05_b1k/<EXP_NAME>/<step>/` every `SAVE_INTERVAL` steps.
 * **Resuming:** run the same command again. `train.sh` resumes from the newest checkpoint when one exists and
   starts fresh only when none does — so a crash, reboot or job time limit costs at most `SAVE_INTERVAL` steps.
   If a process was killed *while* saving, delete that half-written step directory (it lacks a complete `params/`)
@@ -200,8 +224,10 @@ address is on an interface the machines can reach each other through.
 
 ## 8. Using the trained model
 
-Our trained checkpoint (step 135,199) is on Hugging Face (link in the README; Gemma Terms of Use apply), and a
-ready-to-run policy server with it is published as a Docker image (README). To serve a checkpoint you trained
+Our trained checkpoint (step 135,199) is on Hugging Face —
+[VivekChandra/pi05-behavior-2026-dexterity](https://huggingface.co/VivekChandra/pi05-behavior-2026-dexterity)
+(Gemma Terms of Use apply) — and a ready-to-run policy server with it is published as a Docker image
+(`ghcr.io/vivekchandra1324/b1k-pi05-policy:135199`, see the README). To serve a checkpoint you trained
 yourself, use the BEHAVIOR fork's `scripts/b1k/serve_b1k.py` with your checkpoint directory and the same
 normalisation settings you trained with (`B1K_NORM_STATE`, `B1K_NORM_ACTIONS`, `B1K_STAGE_AUX`).
 
@@ -215,4 +241,7 @@ normalisation settings you trained with (`B1K_NORM_STATE`, `B1K_NORM_ACTIONS`, `
 | process killed while saving a checkpoint | host RAM exhausted | more RAM, fewer `NUM_WORKERS`, smaller `B1K_DECODER_CACHE` |
 | `jax.devices()` shows fewer GPUs than you have | CUDA/driver or `CUDA_VISIBLE_DEVICES` | fix before training: FSDP would silently use fewer |
 | norm stats run out of memory | video decoded for nothing | use `--no-video` |
-| resume starts again at step 0 | no complete checkpoint in the run directory | check `<CKPT_DIR>/pi05_b1k/<EXP_NAME>/<step>/params` |
+| resume starts again at step 0 | no complete checkpoint in the run directory | check `$WORK/checkpoints/pi05_b1k/<EXP_NAME>/<step>/params` |
+| `set WORK to your working directory first` | `$WORK` not exported in this shell | `export WORK=...` (§0) |
+| `libx265` missing / transcode fails at once | ffmpeg built without x265 | install a full ffmpeg (conda-forge or distro package) |
+| `schedule impossible` | `TOTAL_STEPS` too small for warmup + cool-down | raise `TOTAL_STEPS` or lower `WARMUP_STEPS` |

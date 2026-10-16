@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Create the training dataset: the three RGB camera videos re-encoded at 224x224, WITHOUT B-frames, depth dropped.
 
-    python scripts/transcode_rgb224.py --src /data/2026-challenge-demos --dst /data/2026-challenge-rgb224 --workers 32
+    python3 scripts/transcode_rgb224.py --src $WORK/data/2026-challenge-demos --dst $WORK/data/2026-challenge-rgb224 --workers 32
 
 Why 224: pi0.5 consumes 224x224 images (openpi resizes every frame to that before augmentation), so storing them at
 224 makes that resize a no-op and cuts the bytes the loader reads per sample by ~10x (the 2025 winning team did the
