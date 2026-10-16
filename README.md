@@ -15,6 +15,14 @@ instances not run counted as 0).
 | Ready-to-run policy server | `ghcr.io/vivekchandra1324/b1k-pi05-policy:135199` (Docker, one 24 GB GPU) |
 | Self-evaluation results + all rollout videos | 🤗 [`VivekChandra/b1k2026-rollout-videos`](https://huggingface.co/datasets/VivekChandra/b1k2026-rollout-videos) |
 
+## Requirements
+
+* **GPUs:** at least **2× 80 GB** — tested on 2× H100 with our full configuration (EMA on): training,
+  checkpointing and resuming at 8 samples per GPU, and 32 per GPU fits (51.9 GiB peak). One 80 GB GPU works only
+  with EMA turned off. We trained on 8× H100.
+* **RAM:** ~192 GB per machine (the 2-GPU test peaked at 147 GB). **Disk:** ~1 TB for the dataset + ~0.6 TB for the
+  224 copy + ~25 GB per checkpoint. Linux, CUDA 12 driver, `ffmpeg`, `uv`.
+
 ## Quick start
 
 ```bash

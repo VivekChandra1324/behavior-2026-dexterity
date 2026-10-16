@@ -103,6 +103,19 @@ and buffers, almost independent of the batch), plus activations that grow with t
 *state* across `FSDP_DEVICES` GPUs (~12.5 GiB per GPU at FSDP 4). So:
 * **80 GB GPUs, 4 or more per machine (H100/A100):** FSDP 4; we ran 104 samples per GPU. On one machine with
   4 GPUs keep that per-GPU batch (global 416) or less.
+* **2× 80 GB GPUs (tested end to end):** `FSDP_DEVICES=2`, EMA on, our full configuration — the minimum we
+  verified: training, checkpointing and resuming all work. At 8 samples per GPU the state is 25 GiB per GPU and a
+  step peaks at 44.5 GiB. Measured on 2× H100 80 GB, EMA on:
+
+  | per-GPU batch (global) | peak GPU memory | |
+  |---|---|---|
+  | 8 (16) | 44.5 GiB | fits — trained, saved, resumed |
+  | **32 (64)** | **51.9 GiB** | **fits — recommended for 2 GPUs** |
+  | 64 (128) | > 80 GiB | out of memory |
+
+  With 2 GPUs use `BATCH_SIZE=64` and `PEAK_LR≈1.8e-5` (√-scaled). Two GPUs give at most a quarter of our 8-GPU
+  throughput, so our full 112.5 M-sample budget would take well over a month: plan a smaller sample budget
+  (`TOTAL_STEPS`) or more GPUs.
 * **40–48 GB GPUs:** shard over all GPUs of the machine (`FSDP_DEVICES` = GPUs per node, at least 4) and lower the
   per-GPU batch until it fits; start around a quarter of ours (~24 per GPU) and raise it.
 * **One 80 GB GPU:** it does **not** fit as configured (state + temporaries ≈ 75 GiB before any activations; we
@@ -112,8 +125,9 @@ and buffers, almost independent of the batch), plus activations that grow with t
 
 **Host memory (RAM).** Saving a checkpoint copies the training state into host memory, and every data-loader
 worker holds open video decoders. A single-GPU test was killed by the out-of-memory killer at its first checkpoint
-save with 64 GB of RAM (54 GB in use); our training machines had 512 GB. Plan for **at least 128 GB per machine**,
-more with many loader workers, and lower `NUM_WORKERS` / `B1K_DECODER_CACHE` if RAM is tight.
+save with 64 GB of RAM (54 GB in use); the 2-GPU test peaked at 147 GB with 8 loader workers; our training
+machines had 512 GB. Plan for **at least ~192 GB per machine** (more with more loader workers), and lower
+`NUM_WORKERS` / `B1K_DECODER_CACHE` if RAM is tight.
 
 If a configuration does not fit, the run fails at the first step with an out-of-memory error; lower the per-GPU
 batch. `XLA_PYTHON_CLIENT_MEM_FRACTION=0.95` (set by `train.sh`) lets JAX use almost all GPU memory.

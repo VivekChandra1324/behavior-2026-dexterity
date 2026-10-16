@@ -24,6 +24,9 @@ NGPU=$(nvidia-smi -L | wc -l)
 # warmup-stable-decay schedule: constant peak LR until STABLE_END, then linear decay to the end
 STABLE_END=$(( TOTAL_STEPS * (100 - COOLDOWN_PCT) / 100 ))
 export B1K_WSD="$STABLE_END,$TOTAL_STEPS"
+(( WARMUP_STEPS <= STABLE_END && STABLE_END < TOTAL_STEPS )) || {
+  echo "schedule impossible: need WARMUP_STEPS ($WARMUP_STEPS) <= stable end ($STABLE_END) < TOTAL_STEPS ($TOTAL_STEPS);"
+  echo "raise TOTAL_STEPS, lower WARMUP_STEPS or COOLDOWN_PCT"; exit 1; }
 
 # resume if a complete checkpoint exists (a step directory with params/), otherwise start a fresh run
 RUN_DIR=$CKPT_DIR/pi05_b1k/$EXP_NAME
