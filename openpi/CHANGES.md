@@ -5,6 +5,8 @@
 `0cc8e355f7bac0976db1cc3139b1ff0379feea60` (`BASE_COMMIT`). `scripts/setup_openpi.sh` checks out that commit and
 copies the overlay on top. Every modified file carries a one-line notice; every change is opt-in through a `B1K_*`
 environment variable or keeps the upstream behaviour by default, and is explained in a comment at the change.
+Tags such as `(T41)` or `(T65)` in those comments are entry numbers in our internal engineering log; the comment
+next to each tag states the finding itself.
 
 openpi is licensed under Apache-2.0 (see `LICENSE` at the repository root); these files remain under that license.
 
