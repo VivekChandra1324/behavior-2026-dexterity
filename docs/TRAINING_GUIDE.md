@@ -97,15 +97,23 @@ Edit the "your hardware" and "schedule" blocks of [`configs/train.env`](../confi
 | speed | ~6.75 s/step ≈ 123 samples/s (≈ 15 samples/s per GPU) |
 | wall time | ~11 days ≈ 2,400 H100-hours including start-ups and checkpoints |
 
-**Memory.** The model has 3.35 B parameters. Its training state — fp32 weights, gradients, Adam moments and an EMA
-copy — is ~20 bytes per parameter ≈ **67 GB**, before activations. FSDP divides that across `FSDP_DEVICES` GPUs:
-~17 GB per GPU at FSDP 4. So:
-* **80 GB GPUs (H100/A100):** FSDP 4 per node; we ran 104 samples per GPU. On one machine with 4 GPUs, keep the
-  same per-GPU batch (global 416) or less.
+**GPU memory (measured).** The model has 3.35 B parameters. Its training state, measured on one GPU: weights
+12.5 GiB + Adam optimizer 25.0 GiB + EMA copy 12.5 GiB = **50 GiB**, plus ~25 GiB of temporaries for a step (gradients
+and buffers, almost independent of the batch), plus activations that grow with the batch. FSDP divides the
+*state* across `FSDP_DEVICES` GPUs (~12.5 GiB per GPU at FSDP 4). So:
+* **80 GB GPUs, 4 or more per machine (H100/A100):** FSDP 4; we ran 104 samples per GPU. On one machine with
+  4 GPUs keep that per-GPU batch (global 416) or less.
 * **40–48 GB GPUs:** shard over all GPUs of the machine (`FSDP_DEVICES` = GPUs per node, at least 4) and lower the
   per-GPU batch until it fits; start around a quarter of ours (~24 per GPU) and raise it.
-* **A single GPU:** the 67 GB state alone does not fit in less than 80 GB; on one 80 GB GPU use `FSDP_DEVICES=1`
-  and a very small batch. Expect it to be slow — this is a multi-GPU model.
+* **One 80 GB GPU:** it does **not** fit as configured (state + temporaries ≈ 75 GiB before any activations; we
+  measured an out-of-memory error even at batch 2). It fits with the EMA copy turned off — add `--ema-decay None`
+  to the `train.sh` command — at a small batch: batch 2 peaked at 62 GiB. Without EMA you train the raw weights
+  (we used EMA 0.99); expect it to be slow — this is a multi-GPU model.
+
+**Host memory (RAM).** Saving a checkpoint copies the training state into host memory, and every data-loader
+worker holds open video decoders. A single-GPU test was killed by the out-of-memory killer at its first checkpoint
+save with 64 GB of RAM (54 GB in use); our training machines had 512 GB. Plan for **at least 128 GB per machine**,
+more with many loader workers, and lower `NUM_WORKERS` / `B1K_DECODER_CACHE` if RAM is tight.
 
 If a configuration does not fit, the run fails at the first step with an out-of-memory error; lower the per-GPU
 batch. `XLA_PYTHON_CLIENT_MEM_FRACTION=0.95` (set by `train.sh`) lets JAX use almost all GPU memory.
@@ -128,6 +136,8 @@ cd behavior-2026-dexterity
 bash scripts/train.sh ../openpi-b1k                     # or: TRAIN_ENV=my.env bash scripts/train.sh ../openpi-b1k
 ```
 
+* **Start-up takes a few minutes** before step 0: building the sampling index over 211 M frames (~3 min),
+  loading the 12.5 GB base weights and compiling the training step (~1–2 min with a cold compile cache).
 * Checkpoints go to `<CKPT_DIR>/pi05_b1k/<EXP_NAME>/<step>/` every `SAVE_INTERVAL` steps.
 * **Resuming:** run the same command again. `train.sh` resumes from the newest checkpoint when one exists and
   starts fresh only when none does — so a crash, reboot or job time limit costs at most `SAVE_INTERVAL` steps.
@@ -187,7 +197,8 @@ normalisation settings you trained with (`B1K_NORM_STATE`, `B1K_NORM_ACTIONS`, `
 |---|---|---|
 | samples/s far below ~15 per GPU, GPUs idle | loader starved: B-frames, slow disk, too few/many workers | §3 verify, §5 data loader |
 | host RAM keeps climbing, workers killed | too many workers × cached decoders | lower `NUM_WORKERS` / `B1K_DECODER_CACHE` |
-| out of memory at step 1 | per-GPU batch too large for your GPU | lower `BATCH_SIZE` or raise `FSDP_DEVICES` |
+| out of memory at step 1 | per-GPU batch too large for your GPU | lower `BATCH_SIZE`, raise `FSDP_DEVICES`, or (one GPU) `--ema-decay None` |
+| process killed while saving a checkpoint | host RAM exhausted | more RAM, fewer `NUM_WORKERS`, smaller `B1K_DECODER_CACHE` |
 | `jax.devices()` shows fewer GPUs than you have | CUDA/driver or `CUDA_VISIBLE_DEVICES` | fix before training: FSDP would silently use fewer |
 | norm stats run out of memory | video decoded for nothing | use `--no-video` |
 | resume starts again at step 0 | no complete checkpoint in the run directory | check `<CKPT_DIR>/pi05_b1k/<EXP_NAME>/<step>/params` |
