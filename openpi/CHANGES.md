@@ -3,8 +3,10 @@
 `overlay/` holds complete copies of the files we modified in the BEHAVIOR fork of openpi
 ([`wensi-ai/openpi`](https://github.com/wensi-ai/openpi), branch `behavior`), at commit
 `0cc8e355f7bac0976db1cc3139b1ff0379feea60` (`BASE_COMMIT`). `scripts/setup_openpi.sh` checks out that commit and
-copies the overlay on top. Every modified file carries a one-line notice; every change is opt-in through a `B1K_*`
-environment variable or keeps the upstream behaviour by default, and is explained in a comment at the change.
+copies the overlay on top. Every modified or added file carries a one-line notice, and every change is explained in a
+comment at the change. Training changes are opt-in through a `B1K_*` environment variable or keep the upstream
+behaviour by default; serving options are off unless given. Two serving changes are always on because the current
+evaluator needs them: the `robot_r1` observation keys and the disabled server keepalive ping.
 Tags such as `(T41)` or `(T65)` in those comments are entry numbers in our internal engineering log; the comment
 next to each tag states the finding itself.
 
@@ -22,8 +24,14 @@ openpi is licensed under Apache-2.0 (see `LICENSE` at the repository root); thes
 | `src/openpi/models/model.py`, `src/openpi/models/gemma.py` | Plumbing for the above (stage label in the observation; remat policy) | — |
 | `src/openpi/policies/b1k_policy.py` | Temporal stage label for the auxiliary head, computed from the frame index and a per-task stage count | `B1K_STAGE_AUX`, `B1K_STAGE_TABLE` |
 | `src/openpi/transforms.py` | Per-key choice of normalisation (quantile or z-score) for state and actions | `B1K_NORM_STATE`, `B1K_NORM_ACTIONS`, `B1K_QUANTILE_NORM`, `B1K_ACTION_PERSTEP` |
+| `scripts/b1k/serve_b1k.py` | Serving entry point: one server for all 100 tasks (`--task b1k/auto`, the prompt follows each request's `task_id`); action compression and the gripper re-open rule as options | `--task b1k/auto`, `--compress_from`, `--compress_to`, `--gripper_table` |
+| `src/openpi/serving/websocket_b1k_server.py` | Maps the evaluator's `task_id` to the task name; the evaluator's optional action-chunk replay protocol (`--replay-action-chunk-size K`); no server keepalive pings (the default ones dropped heavy-scene rollouts; the official client runs its own); optional timing log | `B1K_LOG_INFER` |
+| `src/openpi/shared/eval_b1k_wrapper.py` | Receding-horizon execution with chunk replay (`act_chunk`, replans when a chunk would cross a replan step); action compression (cubic spline of the first 26 predicted steps onto 20, base velocity scaled, off through a grasp); hook for the gripper rule; per-request task switching | — |
+| `src/openpi/shared/b1k_correction_rules.py` (new) | The gripper re-open rule (2025 winning solution), reading the per-task, per-stage table `serving/gripper_table.json` | — |
+| `src/openpi/shared/eval_b1k_wrapper_test.py` (new) | Tests (pytest): chunk replay gives the same actions as per-step requests, with and without compression; a chunk that would cross a replan step replans; task switching resets the plan; evaluator `task_id` mapping | — |
+| `src/openpi/configs/robots/b1k.py` | R1Pro observation keys renamed `robot` → `robot_r1`, the robot name used by the BEHAVIOR-1K v3.9.3 evaluator (serving only; training reads `dataset_key`) | — |
+| `src/openpi/configs/tasks/b1k_task_ids.json` (new) | Evaluator `task_id` → task name for all 100 tasks | — |
 | `src/openpi/configs/tasks/b1k.py` | Prompts for all 100 tasks. **The prompt is the task's snake_case name** (e.g. `turning_on_radio`), because `prompt_from_task=True` reads the task names stored in the dataset; any prompt you use at inference must match | — |
 
-Not included (they serve a trained model to the simulator rather than train it): the WebSocket server changes, the
-inference-time action-chunk replay and correction rules. A ready-to-run policy server with our trained checkpoint is
-published as a Docker image (see the README).
+The overlay contains every file the published Docker image changes: the image is built from the same base commit
+with the same changes. `scripts/serve.sh` runs the image's entrypoint command on a source checkout.

@@ -5,7 +5,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/code-Apache--2.0-blue)](LICENSE)
 [![Weights: Gemma terms](https://img.shields.io/badge/weights-Gemma%20Terms%20of%20Use-orange)](LICENSE_GEMMA.txt)
 
-Code and a step-by-step guide to fine-tune **π0.5** ([openpi](https://github.com/Physical-Intelligence/openpi), JAX)
+Code, a step-by-step guide and a [technical report](report/report.pdf) to fine-tune **π0.5** ([openpi](https://github.com/Physical-Intelligence/openpi), JAX)
 on the official demonstrations of the **[2026 BEHAVIOR Challenge](https://behavior.stanford.edu/challenge/index.html)**:
 100 long-horizon household tasks performed by a Galaxea R1 Pro robot in the OmniGibson simulator. It is written to
 run on *your* hardware — paths, number of GPUs and batch size are settings — and was tested end to end from a fresh
@@ -26,7 +26,8 @@ clone on 2× H100.
 
 | what | where |
 |---|---|
-| Training code + guide | this repository |
+| Training **and serving** code + guide | this repository |
+| Technical report | [report/report.pdf](report/report.pdf) (LaTeX source: `report/report.tex`) |
 | Trained model, step 135,199 (12.4 GB, orbax) | 🤗 [VivekChandra/pi05-behavior-2026-dexterity](https://huggingface.co/VivekChandra/pi05-behavior-2026-dexterity) |
 | Ready-to-run policy server (all 100 tasks, one 24 GB GPU) | [`ghcr.io/vivekchandra1324/b1k-pi05-policy:135199`](https://github.com/users/VivekChandra1324/packages/container/package/b1k-pi05-policy) |
 | Self-evaluation: 853 result JSONs + evaluation README | 🤗 [submission.zip](https://huggingface.co/datasets/VivekChandra/b1k2026-rollout-videos/resolve/main/submission.zip) · [README](https://huggingface.co/datasets/VivekChandra/b1k2026-rollout-videos/blob/main/README.md) |
@@ -102,6 +103,10 @@ scripts/prepare_assets.sh       normalisation statistics + stage table, where tr
 scripts/compute_norm_stats.py   (used by prepare_assets.sh) statistics without decoding video
 scripts/compute_stage_table.py  (used by prepare_assets.sh) per-task stage counts for the stage head
 scripts/train.sh                train, or resume from the newest checkpoint
+scripts/serve.sh                serve a checkpoint to the evaluator with our inference settings (= the Docker image)
+scripts/derive_gripper_table.py rebuild serving/gripper_table.json from the demonstrations
+serving/                        serve.env (model switches, as trained) + gripper_table.json (gripper re-open rule)
+report/                         technical report (PDF + LaTeX source)
 openpi/overlay/                 our modified openpi files    openpi/CHANGES.md   what changed and why
 docs/TRAINING_GUIDE.md          the step-by-step guide       docs/RESULTS.md     per-task results
 ```
@@ -113,6 +118,10 @@ docs/TRAINING_GUIDE.md          the step-by-step guide       docs/RESULTS.md    
   it with the official evaluator from [BEHAVIOR-1K](https://github.com/StanfordVL/BEHAVIOR-1K) (see the
   [evaluation README](https://huggingface.co/datasets/VivekChandra/b1k2026-rollout-videos/blob/main/README.md) for
   the exact command we used).
+* **From source (same code and settings as the image):** set up openpi as in Quick start step 1, download the
+  weights with `hf download VivekChandra/pi05-behavior-2026-dexterity --local-dir $WORK/pi05-dexterity`, then
+  `bash scripts/serve.sh $WORK/openpi-b1k $WORK/pi05-dexterity/checkpoint` (port 8000; one GPU, ~8.5 GB). Run the
+  official evaluator with `--replay-action-chunk-size 20` (recommended; per-step requests are equally correct).
 * **Weights:** [VivekChandra/pi05-behavior-2026-dexterity](https://huggingface.co/VivekChandra/pi05-behavior-2026-dexterity)
   — orbax checkpoint (`checkpoint/params`, `checkpoint/assets`) for openpi's `pi05_b1k` config; the model card
   lists the settings that must match training. Also a good starting point for further fine-tuning.
