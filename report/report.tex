@@ -11,7 +11,7 @@
 \newcommand{\pizf}{$\pi_{0.5}$}
 
 \title{A Measured, Reproducible Recipe for Fine-Tuning \pizf{}\\on All 100 Tasks of the 2026 BEHAVIOR Challenge}
-\author{Vivek Chandra \\ Team Dexterity \\ \small \tbc{affiliation and contact e-mail}}
+\author{Vivek Chandra \\ Team Dexterity \\ \small \texttt{chandravivek.1324@gmail.com}}
 \date{November 2026}
 
 \begin{document}
@@ -40,9 +40,9 @@ At evaluation time the policy sees only onboard RGB, depth and proprioception, a
 24\,GB GPU.
 
 Our entry is a deliberately conventional system: \pizf{}, fine-tuned from the public \texttt{pi05\_base} checkpoint
-with the BEHAVIOR fork of openpi. Our contribution is not a new method. It is (i) a training and inference recipe in
+with the BEHAVIOR fork of openpi. Our contribution is (i) a training and inference recipe in
 which every choice is backed by a measurement against an alternative (Table~\ref{tab:recipe}), (ii) the systems work
-that made a 112.5\,M-sample run feasible on a shared academic cluster with a 2-day job limit, and (iii) a release
+that made a 112.5\,M-sample run feasible on an HPC cluster, and (iii) a release
 built and tested so that someone else can reproduce it (Section~\ref{sec:repro}).
 
 \paragraph{Released materials.}
@@ -135,9 +135,9 @@ $40\times$ fewer samples than the 2025 winner's run~\cite{rlc2025} while coverin
 therefore ran at a global batch of 832 for 135{,}200 steps: \textbf{112.5\,M samples, about 0.53 epoch}.
 
 %=====================================================================================================================
-\section{Training at scale on a shared cluster}
+\section{Training at scale on an HPC cluster}
 \label{sec:scale}
-We trained on two nodes, each with 4 NVIDIA H100 80\,GB GPUs, under a 2-day job limit, using JAX with openpi's
+We trained on two nodes, each with 4 NVIDIA H100 80\,GB GPUs, using JAX with openpi's
 mesh in an HSDP layout: FSDP over the 4 GPUs inside a node (NVLink) and 2 data-parallel replicas across nodes
 (InfiniBand).
 
@@ -157,7 +157,7 @@ samples per GPU & 16 & 32 & 64 & FSDP across all 8 GPUs \\
 to the Ethernet interface that actually routes between nodes, and binding the host InfiniBand libraries, which took
 inter-node bandwidth from 0.12\,GB/s over TCP to 12.07\,GB/s RDMA.
 
-\paragraph{Surviving the 2-day limit.} Each job traps a pre-timeout signal and re-submits itself to resume from the
+\paragraph{Resuming across jobs.} Each job traps a pre-timeout signal and re-submits itself to resume from the
 newest complete checkpoint. A successor job is queued ahead of time, and the running job hands over cleanly after a
 checkpoint save. Incomplete checkpoints are deleted before any resume, and checkpoints are written every 1{,}000 steps
 (about the Young--Daly optimum for a $\sim$40\,s save). The resumed data stream is re-seeded per link so that no link
@@ -315,7 +315,6 @@ $\sim$8.5\,GB of GPU memory next to the simulator.
 
 \paragraph{Acknowledgements.} We thank the BEHAVIOR Challenge organizers for the benchmark, the dataset and the
 \pizf{} baseline, and the authors of the two leading 2025 solutions for releasing their code and reports.
-\tbc{computing-centre acknowledgement; statement on AI-assistant use}
 
 \begin{thebibliography}{9}\small
 \bibitem{pi05} Physical Intelligence. $\pi_{0.5}$: a Vision-Language-Action Model with Open-World Generalization. arXiv:2504.16054, 2025.
