@@ -2,7 +2,7 @@
 \documentclass[10pt]{article}
 \usepackage[margin=0.9in]{geometry}
 \usepackage[T1]{fontenc}
-\usepackage{lmodern,microtype,booktabs,amsmath,xcolor,enumitem}
+\usepackage{lmodern,microtype,booktabs,amsmath,xcolor,enumitem,array,colortbl}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
 \usepackage[hidelinks]{hyperref}
@@ -110,20 +110,31 @@ were measured and rejected.
 
 \begin{table}[t]
 \centering\small
-\begin{tabular}{@{}p{0.34\linewidth}p{0.6\linewidth}@{}}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.34\linewidth}>{\raggedright\arraybackslash}p{0.6\linewidth}@{}}
 \toprule
 \textbf{setting (final)} & \textbf{evidence} \\
 \midrule
 initialise from \texttt{pi05\_base} & a released 2025 checkpoint loaded cleanly but gave the same loss and $2\times$ the gradient norm \\
+\arrayrulecolor{black!25}\midrule
 15 flow-matching samples per example (one prefix pass, 15 noise/time draws through the action expert) & $-8.3$\,\% held-out action error (2 seeds) \\
+\arrayrulecolor{black!25}\midrule
 isotropic flow noise (\pizf{} default) & correlated noise~\cite{rlc2025} measured 11.6\,\% and 5.6\,\% \emph{worse} \\
+\arrayrulecolor{black!25}\midrule
 state: quantile normalisation & tie with z-score in action error, but saturated state values fall from 28.6\,\% to 5.0\,\% \\
+\arrayrulecolor{black!25}\midrule
 actions: global z-score & per-time-step normalisation~\cite{rlc2025} 4.7\,\% worse on the first 8 chunk steps \\
+\arrayrulecolor{black!25}\midrule
 vision tower trained & freezing it was 17\,\% faster per step but 4\,\% worse \\
+\arrayrulecolor{black!25}\midrule
 auxiliary temporal-stage head (stage = $\lfloor$frame$/(\text{len}/N)\rfloor$, $N=\mathrm{clip}(\mathrm{round}(\overline{\text{len}}/900),5,15)$) & no measurable effect either way; the intended $32\times$ larger loss weight was 2.04\,\% worse (above a pre-set 2\,\% limit), so kept at the original weight \\
+\arrayrulecolor{black!25}\midrule
 task sampling $\propto \text{frames}^{0.5}$ & the metric weights tasks equally, while uniform frame sampling gives the longest tasks up to $12\times$ the signal of the shortest \\
+\arrayrulecolor{black!25}\midrule
 peak LR $6.4\times10^{-5}$, warm-up 1{,}000, constant, then $(1-\sqrt{t})$ cool-down over the last 15\,\% & LR sweep at batch 768: $9.0\text{e-}5 \to 0.019131$, $6.4\text{e-}5 \to 0.019370$, $4.5\text{e-}5 \to 0.019878$; pre-registered rule: one $\sqrt2$ step below the best \\
+\arrayrulecolor{black!25}\midrule
 AdamW ($\beta = 0.9/0.95$), gradient clip 1.0, EMA 0.99 & fork defaults \\
+\arrayrulecolor{black}
 \bottomrule
 \end{tabular}
 \caption{Final training settings and the measurement behind each. Errors are paired held-out action errors on the fixed exam.}
