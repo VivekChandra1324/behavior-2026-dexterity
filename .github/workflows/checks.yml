@@ -1,0 +1,20 @@
+# Fast static checks on every push: shell syntax, Python syntax, JSON validity, citation metadata.
+# (Training and serving need GPUs and the 1.2 TB dataset; they were tested end to end separately -- see the report, Section 7.)
+name: checks
+on: [push, pull_request]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: shell syntax
+        run: for f in scripts/*.sh; do bash -n "$f"; done
+      - name: python syntax
+        run: python -m compileall -q scripts openpi/overlay
+      - name: JSON files parse
+        run: for f in $(git ls-files '*.json'); do python -m json.tool "$f" > /dev/null; done
+      - name: CITATION.cff is valid
+        run: pip install -q cffconvert && cffconvert --validate

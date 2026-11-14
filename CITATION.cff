@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this code or the released model, please cite the technical report."
+title: "Team Dexterity: pi0.5 for the 2026 BEHAVIOR Challenge"
+type: software
+authors:
+  - family-names: Chandra
+    given-names: Vivek
+    email: chandravivek.1324@gmail.com
+repository-code: "https://github.com/VivekChandra1324/behavior-2026-dexterity"
+url: "https://huggingface.co/VivekChandra/pi05-behavior-2026-dexterity"
+license: Apache-2.0
+version: 1.0.0
+date-released: "2026-11-14"
+keywords:
+  - robot learning
+  - vision-language-action
+  - pi0.5
+  - openpi
+  - BEHAVIOR-1K
+  - imitation learning
+preferred-citation:
+  type: report
+  title: "A Measured, Reproducible Recipe for Fine-Tuning pi0.5 on All 100 Tasks of the 2026 BEHAVIOR Challenge"
+  authors:
+    - family-names: Chandra
+      given-names: Vivek
+  year: 2026
+  month: 11
+  url: "https://github.com/VivekChandra1324/behavior-2026-dexterity/blob/main/report/report.pdf"

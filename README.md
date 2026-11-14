@@ -4,6 +4,8 @@
 [![Results & videos](https://img.shields.io/badge/🤗%20results%20%26%20videos-b1k2026--rollout--videos-yellow)](https://huggingface.co/datasets/VivekChandra/b1k2026-rollout-videos)
 [![License: Apache-2.0](https://img.shields.io/badge/code-Apache--2.0-blue)](LICENSE)
 [![Weights: Gemma terms](https://img.shields.io/badge/weights-Gemma%20Terms%20of%20Use-orange)](LICENSE_GEMMA.txt)
+[![checks](https://github.com/VivekChandra1324/behavior-2026-dexterity/actions/workflows/checks.yml/badge.svg)](https://github.com/VivekChandra1324/behavior-2026-dexterity/actions/workflows/checks.yml)
+[![Technical report](https://img.shields.io/badge/report-PDF-red)](report/report.pdf)
 
 Code, a step-by-step guide and a [technical report](report/report.pdf) to fine-tune **π0.5** ([openpi](https://github.com/Physical-Intelligence/openpi), JAX)
 on the official demonstrations of the **[2026 BEHAVIOR Challenge](https://behavior.stanford.edu/challenge/index.html)**:
@@ -12,7 +14,9 @@ run on *your* hardware — paths, number of GPUs and batch size are settings —
 clone on 2× H100.
 
 **Result — self-evaluated overall score 0.339** on the public test set with the official evaluator: 853 rollouts,
-154 full successes, 79 of 100 tasks scoring. Per-task table: [docs/RESULTS.md](docs/RESULTS.md).
+154 full successes, 79 of 100 tasks scoring. Per-task table: [docs/RESULTS.md](docs/RESULTS.md). On the
+[official leaderboard](https://huggingface.co/spaces/behavior-1k/2026-challenge-leaderboard) the entry is listed as
+self-reported (Q 0.339, success rate 0.154, counting the 147 instances not run as failures).
 
 ## Contents
 
@@ -166,11 +170,19 @@ published solutions of the 2025 BEHAVIOR Challenge.
 
 ## Citation
 
+If you use this code or the model, please cite the technical report (GitHub's "Cite this repository" button
+reads [CITATION.cff](CITATION.cff)):
+
 ```bibtex
-@misc{dexterity2026behavior,
-  title  = {Team Dexterity: pi0.5 for the 2026 BEHAVIOR Challenge},
-  author = {Vivek Chandra},
-  year   = {2026},
-  url    = {https://github.com/VivekChandra1324/behavior-2026-dexterity}
+@techreport{chandra2026dexterity,
+  title       = {A Measured, Reproducible Recipe for Fine-Tuning $\pi_{0.5}$ on All 100 Tasks of the 2026 {BEHAVIOR} Challenge},
+  author      = {Vivek Chandra},
+  institution = {Team Dexterity, 2026 BEHAVIOR Challenge},
+  year        = {2026},
+  month       = nov,
+  url         = {https://github.com/VivekChandra1324/behavior-2026-dexterity/blob/main/report/report.pdf}
 }
 ```
+
+Contact: chandravivek.1324@gmail.com, or open an
+[issue](https://github.com/VivekChandra1324/behavior-2026-dexterity/issues).
